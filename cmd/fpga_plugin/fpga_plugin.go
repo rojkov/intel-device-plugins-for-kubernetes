@@ -101,7 +101,7 @@ func (dm *deviceManager) ListAndWatch(empty *pluginapi.Empty, stream pluginapi.D
 }
 
 func (dm *deviceManager) Allocate(ctx context.Context, rqt *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
-	response, err := deviceplugin.MakeAllocateResponse(rqt, dm.devices)
+	response, err := deviceplugin.MakeAllocateResponse(rqt, dm.devices, pluginEndpointPrefix)
 	// Set container annotations when programming is allowed
 	if dm.mode == devicecache.RegionMode {
 		for _, containerResponse := range response.GetContainerResponses() {
