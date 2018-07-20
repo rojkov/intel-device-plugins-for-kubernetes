@@ -86,7 +86,7 @@ func ExecCommand(cmdName string, arg ...string) (bytes.Buffer, error) {
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if err != nil {
-		fmt.Println("CMD--" + cmdName + ": " + fmt.Sprint(err) + ": " + stderr.String())
+		fmt.Printf("CMD--%s:%v:%s\n", cmdName, err, stderr.String())
 	}
 	return out, err
 }
@@ -184,8 +184,6 @@ func BindDevice(dpdkDriver string, id string) error {
 		fmt.Printf("Cannot obtain the Device ID for this device")
 		return fmt.Errorf("Cannot obtain the Device ID for this device: %v\n", err)
 	}
-	vfBindStr := concatStr(vendorPrefix, vfdevID)
-	vfBindStrBytes := []byte(vfBindStr)
 	err = ioutil.WriteFile(unbindKernelDevicePath, devicePCIAddrBytes, 0644)
 	if err != nil {
 		glog.Error(err)
@@ -194,7 +192,7 @@ func BindDevice(dpdkDriver string, id string) error {
 
 	}
 	// Unbinding from the kernel driver DONE
-	err = ioutil.WriteFile(bindDevicePath, vfBindStrBytes, 0644)
+	err = ioutil.WriteFile(bindDevicePath, []byte(vendorPrefix+vfdevID), 0644)
 	if err != nil {
 		fmt.Printf("Binding to the dpdk driver failed\n")
 		return fmt.Errorf("Binding to the dpdk driver failed: %v\n", err)
@@ -326,7 +324,31 @@ func (dm *deviceManager) ListAndWatch(empty *pluginapi.Empty, stream pluginapi.D
 }
 
 func (dm *deviceManager) Allocate(ctx context.Context, rqt *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
-	return deviceplugin.MakeAllocateResponse(rqt, dm.devices, pluginEndpointPrefix)
+	resp, err := deviceplugin.MakeAllocateResponse(rqt, dm.devices)
+	if err != nil {
+		return nil, err
+	}
+
+	for cnum, crqt := range rqt.ContainerRequests {
+		envmap := make(map[string]string)
+
+		for devNum, id := range crqt.DevicesIDs {
+			envmap[fmt.Sprintf("%s%d", pluginEndpointPrefix, devNum+1)] = "0000:" + id
+
+			for _, mountPoint := range dm.devices[id].DeviceMountPath {
+				fmt.Printf("mountDir mounting is %v\n", mountPoint)
+				resp.ContainerResponses[cnum].Mounts = append(resp.ContainerResponses[cnum].Mounts, &pluginapi.Mount{
+					HostPath:      mountPoint,
+					ContainerPath: mountPoint,
+					ReadOnly:      false,
+				})
+			}
+		}
+
+		resp.ContainerResponses[cnum].Envs = envmap
+	}
+
+	return resp, nil
 }
 
 func (dm *deviceManager) PreStartContainer(ctx context.Context, rqt *pluginapi.PreStartContainerRequest) (*pluginapi.PreStartContainerResponse, error) {

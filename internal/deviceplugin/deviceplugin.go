@@ -21,7 +21,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -172,22 +171,17 @@ func waitForServer(socket string, timeout time.Duration) error {
 }
 
 // MakeAllocateResponse creates response data for Allocate GRPC call
-func MakeAllocateResponse(rqt *pluginapi.AllocateRequest, devices map[string]DeviceInfo, pluginPrefix string) (*pluginapi.AllocateResponse, error) {
+func MakeAllocateResponse(rqt *pluginapi.AllocateRequest, devices map[string]DeviceInfo) (*pluginapi.AllocateResponse, error) {
 	resp := new(pluginapi.AllocateResponse)
 	for _, crqt := range rqt.ContainerRequests {
-		var envmap = make(map[string]string)
 		cresp := new(pluginapi.ContainerAllocateResponse)
-		for devNum, id := range crqt.DevicesIDs {
+		for _, id := range crqt.DevicesIDs {
 			dev, ok := devices[id]
 			if !ok {
 				return nil, fmt.Errorf("Invalid allocation request with non-existing device %s", id)
 			}
 			if dev.State != pluginapi.Healthy {
 				return nil, fmt.Errorf("Invalid allocation request with unhealthy device %s", id)
-			}
-			if pluginPrefix == "intelQAT" {
-				devNumStr := strconv.Itoa(devNum + 1)
-				envmap[pluginPrefix+devNumStr] = "0000:" + id
 			}
 			for _, devnode := range dev.Nodes {
 				cresp.Devices = append(cresp.Devices, &pluginapi.DeviceSpec{
@@ -196,17 +190,7 @@ func MakeAllocateResponse(rqt *pluginapi.AllocateRequest, devices map[string]Dev
 					Permissions:   "mrw",
 				})
 			}
-			for _, mountPoint := range dev.DeviceMountPath {
-
-				fmt.Printf("mountDir mounting is %v\n", mountPoint)
-				cresp.Mounts = append(cresp.Mounts, &pluginapi.Mount{
-					HostPath:      mountPoint,
-					ContainerPath: mountPoint,
-					ReadOnly:      false,
-				})
-			}
 		}
-		cresp.Envs = envmap
 		resp.ContainerResponses = append(resp.ContainerResponses, cresp)
 	}
 	return resp, nil

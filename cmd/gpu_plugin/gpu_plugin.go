@@ -89,7 +89,10 @@ func (dm *deviceManager) discoverGPUs(sysfsDrmDir string, devfsDriDir string) er
 				}
 
 				if len(nodes) > 0 {
-					dm.devices[f.Name()] = deviceplugin.DeviceInfo{pluginapi.Healthy, nodes, []string{""}}
+					dm.devices[f.Name()] = deviceplugin.DeviceInfo{
+						State: pluginapi.Healthy,
+						Nodes: nodes,
+					}
 				}
 			}
 		}
@@ -138,7 +141,7 @@ func (dm *deviceManager) ListAndWatch(empty *pluginapi.Empty, stream pluginapi.D
 }
 
 func (dm *deviceManager) Allocate(ctx context.Context, rqt *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
-	return deviceplugin.MakeAllocateResponse(rqt, dm.devices, pluginEndpointPrefix)
+	return deviceplugin.MakeAllocateResponse(rqt, dm.devices)
 }
 
 func (dm *deviceManager) PreStartContainer(ctx context.Context, rqt *pluginapi.PreStartContainerRequest) (*pluginapi.PreStartContainerResponse, error) {
