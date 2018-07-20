@@ -83,7 +83,6 @@ func getDpdkDevice(id string) (string, error) {
 	switch *dpdkDriver {
 
 	case "", "igb_uio":
-		devicePCIAdd := concatStr("0000:", id)
 		uioDirPath := concatStr(pciDeviceDir, devicePCIAdd, uioSuffix)
 		files, err := ioutil.ReadDir(uioDirPath)
 		if err != nil {
