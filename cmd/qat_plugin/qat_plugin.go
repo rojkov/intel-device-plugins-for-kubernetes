@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -43,7 +42,7 @@ const (
 	uioSuffix             = "/uio"
 	iommuGroupSuffix      = "/iommu_group"
 	sysfsIommuGroupSuffix = "/sys/kernel/iommu_groups/"
-	newIdSuffix           = "/new_id"
+	newIDSuffix           = "/new_id"
 	driverUnbindSuffix    = "/driver/unbind"
 	qatDeviceRE           = "[0-9|a-f][0-9|a-f]:[0-9|a-f][0-9|a-f].[0-9|a-f].*"
 	vendorPrefix          = "8086 "
@@ -76,19 +75,6 @@ func concatStr(values ...string) string {
 		buffer.WriteString(s)
 	}
 	return buffer.String()
-}
-
-func ExecCommand(cmdName string, arg ...string) (bytes.Buffer, error) {
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd := exec.Command(cmdName, arg...)
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	if err != nil {
-		fmt.Printf("CMD--%s:%v:%s\n", cmdName, err, stderr.String())
-	}
-	return out, err
 }
 
 func getDpdkDevice(id string) (string, error) {
@@ -162,40 +148,40 @@ func getDpdkMountPaths(id string) ([]string, error) {
 //identify the device iD of a device
 func getDeviceID(pciAddr string) (string, error) {
 	deviceIDPath := concatStr(pciDeviceDir, pciAddr, "/device")
-	devId, err := ioutil.ReadFile(deviceIDPath)
+	devID, err := ioutil.ReadFile(deviceIDPath)
 	if err != nil {
-		return "", fmt.Errorf("Cannot obtain the Device ID for this device: %v\n", err)
+		return "", fmt.Errorf("Cannot obtain the Device ID for this device: %v", err)
 	}
-	id := bytes.TrimSpace(devId)
+	id := bytes.TrimSpace(devID)
 	idStr := strings.TrimPrefix(string(id), "0x")
 	return idStr, nil
 }
 
-//Binds the device where id is the pci address to the specified device driver
-func BindDevice(dpdkDriver string, id string) error {
+// bindDevice the device where id is the pci address to the specified device driver
+func bindDevice(dpdkDriver string, id string) error {
 
 	devicePCIAddr := concatStr("0000:", id)
 	unbindKernelDevicePath := concatStr(pciDeviceDir, devicePCIAddr, driverUnbindSuffix)
-	bindDevicePath := concatStr(pciDriverDir, dpdkDriver, newIdSuffix)
+	bindDevicePath := concatStr(pciDriverDir, dpdkDriver, newIDSuffix)
 	devicePCIAddrBytes := []byte(devicePCIAddr)
 	vfdevID, err := getDeviceID(devicePCIAddr)
 	if err != nil {
 		glog.Error(err)
 		fmt.Printf("Cannot obtain the Device ID for this device")
-		return fmt.Errorf("Cannot obtain the Device ID for this device: %v\n", err)
+		return fmt.Errorf("Cannot obtain the Device ID for this device: %v", err)
 	}
 	err = ioutil.WriteFile(unbindKernelDevicePath, devicePCIAddrBytes, 0644)
 	if err != nil {
 		glog.Error(err)
 		fmt.Printf("Unbinding from the kernel driver failed\n")
-		return fmt.Errorf("Unbinding from the kernel driver failed: %v\n", err)
+		return fmt.Errorf("Unbinding from the kernel driver failed: %v", err)
 
 	}
 	// Unbinding from the kernel driver DONE
 	err = ioutil.WriteFile(bindDevicePath, []byte(vendorPrefix+vfdevID), 0644)
 	if err != nil {
 		fmt.Printf("Binding to the dpdk driver failed\n")
-		return fmt.Errorf("Binding to the dpdk driver failed: %v\n", err)
+		return fmt.Errorf("Binding to the dpdk driver failed: %v", err)
 	}
 	//Binding to the the dpdk driver DONE\n
 	return nil
@@ -220,7 +206,7 @@ func isValidDpdkDeviceDriver(dpdkDriver string) error {
 // Discovers all QAT devices available on the local node by querying PCI bus using lspci.
 func (dm *deviceManager) discoverQATs() (bool, error) {
 
-	var found bool = false
+	found := false
 	fmt.Println("Discovered Devices below:")
 	kernelvfDrivers := strings.Split(*kernelVfDrivers, ",")
 
@@ -238,7 +224,7 @@ func (dm *deviceManager) discoverQATs() (bool, error) {
 
 		files, err := ioutil.ReadDir(concatStr(pciDriverDir, kernelvfDriver))
 		if err != nil {
-			fmt.Errorf("Can't read sysfs for kernel vf driver %v: %v", kernelvfDriver, err)
+			fmt.Printf("Can't read sysfs for kernel vf driver %v: %v", kernelvfDriver, err)
 			continue
 		}
 
@@ -253,7 +239,7 @@ func (dm *deviceManager) discoverQATs() (bool, error) {
 				if n < max {
 					//vfpciaddr := strings.Fields(vf)[0]
 
-					err = BindDevice(*dpdkDriver, vfpciaddr)
+					err = bindDevice(*dpdkDriver, vfpciaddr)
 					if err != nil {
 						return found, fmt.Errorf("Error in binding the device to the dpdk driver")
 					}
