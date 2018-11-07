@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  digest = "1:8a59c2b5c7776ccd759b7751e2c7ff6126cb17a06205f4fb68ce320d7c784d79"
+  name = "github.com/Thomasdezeeuw/ini"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "c57cb74a90db4eca7390ac08992f7555eabfc1aa"
+  version = "v0.1"
+
+[[projects]]
   digest = "1:a2c1d0e43bd3baaa071d1b9ed72c27d78169b2b269f71c105ac4ba34b1be4a39"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -569,6 +577,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/Thomasdezeeuw/ini",
     "github.com/fsnotify/fsnotify",
     "github.com/golang/glog",
     "github.com/pkg/errors",
