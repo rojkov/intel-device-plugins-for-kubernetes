@@ -18,8 +18,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Thomasdezeeuw/ini"
 	"github.com/pkg/errors"
@@ -77,8 +79,20 @@ func getDevTree(config map[string]section) dpapi.DeviceTree {
 	return devTree
 }
 
-func parseConfigs(execer utilsexec.Interface) (map[string]section, error) {
-	outputBytes, err := execer.Command("adf_ctl", "status").CombinedOutput()
+type devicePlugin struct {
+	execer    utilsexec.Interface
+	configDir string
+}
+
+func newDevicePlugin(configDir string, execer utilsexec.Interface) *devicePlugin {
+	return &devicePlugin{
+		execer:    execer,
+		configDir: configDir,
+	}
+}
+
+func (dp *devicePlugin) parseConfigs() (map[string]section, error) {
+	outputBytes, err := dp.execer.Command("adf_ctl", "status").CombinedOutput()
 	if err != nil {
 		return nil, errors.Wrapf(err, "Can't get driver status")
 	}
@@ -109,7 +123,7 @@ func parseConfigs(execer utilsexec.Interface) (map[string]section, error) {
 
 		devID := strings.TrimPrefix(strings.TrimSpace(devstr[0]), "qat_")
 
-		f, err := os.Open(fmt.Sprintf("/etc/%s_%s.conf", devType, devID))
+		f, err := os.Open(path.Join(dp.configDir, fmt.Sprintf("%s_%s.conf", devType, devID)))
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -186,6 +200,19 @@ func parseConfigs(execer utilsexec.Interface) (map[string]section, error) {
 	return driverConfig, nil
 }
 
+func (dp *devicePlugin) Scan(notifier dpapi.Notifier) error {
+	for {
+		driverConfig, err := dp.parseConfigs()
+		if err != nil {
+			return err
+		}
+
+		notifier.Notify(getDevTree(driverConfig))
+
+		time.Sleep(5 * time.Second)
+	}
+}
+
 func main() {
 	debugEnabled := flag.Bool("debug", false, "enable debug output")
 	flag.Parse()
@@ -194,7 +221,8 @@ func main() {
 		debug.Activate()
 	}
 
-	driverConfig, err := parseConfigs(utilsexec.New())
+	plugin := newDevicePlugin("/etc", utilsexec.New())
+	driverConfig, err := plugin.parseConfigs()
 	if err != nil {
 		fmt.Printf("ERROR: %+v\n", err)
 		os.Exit(1)
