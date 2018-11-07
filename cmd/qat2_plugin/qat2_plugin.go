@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/Thomasdezeeuw/ini"
+	"github.com/pkg/errors"
 
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 	utilsexec "k8s.io/utils/exec"
@@ -76,24 +77,10 @@ func getDevTree(config map[string]section) dpapi.DeviceTree {
 	return devTree
 }
 
-func parseConfigs() (map[string]section, error) {
-	return nil, nil
-}
-
-func main() {
-	debugEnabled := flag.Bool("debug", false, "enable debug output")
-	flag.Parse()
-
-	if *debugEnabled {
-		debug.Activate()
-	}
-
-	execer := utilsexec.New()
-
+func parseConfigs(execer utilsexec.Interface) (map[string]section, error) {
 	outputBytes, err := execer.Command("adf_ctl", "status").CombinedOutput()
 	if err != nil {
-		fmt.Printf("%+v\n", err)
-		os.Exit(1)
+		return nil, errors.Wrapf(err, "Can't get driver status")
 	}
 	output := string(outputBytes[:])
 
@@ -124,14 +111,14 @@ func main() {
 
 		f, err := os.Open(fmt.Sprintf("/etc/%s_%s.conf", devType, devID))
 		if err != nil {
-			panic(err)
+			return nil, errors.WithStack(err)
 		}
 		defer f.Close()
 
 		// Parse the configuration.
 		config, err := ini.Parse(f)
 		if err != nil {
-			panic(err)
+			return nil, errors.WithStack(err)
 		}
 
 		debug.Print(ln, devID, line)
@@ -144,15 +131,15 @@ func main() {
 
 			numProcesses, err := strconv.Atoi(data["NumProcesses"])
 			if err != nil {
-				panic(err)
+				return nil, errors.Wrapf(err, "Can't convert NumProcesses in %s", sectionName)
 			}
 			cryptoEngines, err := strconv.Atoi(data["NumberCyInstances"])
 			if err != nil {
-				panic(err)
+				return nil, errors.Wrapf(err, "Can't convert NumberCyInstances in %s", sectionName)
 			}
 			compressionEngines, err := strconv.Atoi(data["NumberDcInstances"])
 			if err != nil {
-				panic(err)
+				return nil, errors.Wrapf(err, "Can't convert NumberDcInstances in %s", sectionName)
 			}
 			pinned := false
 			if limitDevAccess, ok := data["LimitDevAccess"]; ok {
@@ -164,16 +151,13 @@ func main() {
 			if old, ok := driverConfig[sectionName]; ok {
 				// first check the sections are consistent across endpoints
 				if old.pinned != pinned {
-					fmt.Println("ERROR: the value of LimitDevAccess must be consistent across all devices in", sectionName)
-					os.Exit(1)
+					return nil, errors.Errorf("Value of LimitDevAccess must be consistent across all devices in %s", sectionName)
 				}
 				if !pinned && old.endpoints[0].processes != numProcesses {
-					fmt.Println("ERROR: for not pinned sections NumProcesses must be equal for all devices. Error in", sectionName)
-					os.Exit(1)
+					return nil, errors.Errorf("For not pinned section \"%s\" NumProcesses must be equal for all devices", sectionName)
 				}
 				if old.cryptoEngines != cryptoEngines || old.compressionEngines != compressionEngines {
-					fmt.Println("ERROR: NumberCyInstances and NumberDcInstances must be consistent across all devices in", sectionName)
-					os.Exit(1)
+					return nil, errors.Errorf("NumberCyInstances and NumberDcInstances must be consistent across all devices in %s", sectionName)
 				}
 
 				// then add a new endpoint to the section
@@ -198,5 +182,23 @@ func main() {
 		}
 
 	}
+
+	return driverConfig, nil
+}
+
+func main() {
+	debugEnabled := flag.Bool("debug", false, "enable debug output")
+	flag.Parse()
+
+	if *debugEnabled {
+		debug.Activate()
+	}
+
+	driverConfig, err := parseConfigs(utilsexec.New())
+	if err != nil {
+		fmt.Printf("ERROR: %+v\n", err)
+		os.Exit(1)
+	}
+
 	debug.Print(getDevTree(driverConfig))
 }
