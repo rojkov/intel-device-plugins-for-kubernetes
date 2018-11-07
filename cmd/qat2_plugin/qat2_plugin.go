@@ -33,6 +33,10 @@ import (
 	"github.com/intel/intel-device-plugins-for-kubernetes/pkg/debug"
 )
 
+const (
+	namespace = "qat.intel.com"
+)
+
 type endpoint struct {
 	id        string
 	processes int
@@ -222,11 +226,7 @@ func main() {
 	}
 
 	plugin := newDevicePlugin("/etc", utilsexec.New())
-	driverConfig, err := plugin.parseConfigs()
-	if err != nil {
-		fmt.Printf("ERROR: %+v\n", err)
-		os.Exit(1)
-	}
 
-	debug.Print(getDevTree(driverConfig))
+	manager := dpapi.NewManager(namespace, plugin)
+	manager.Run()
 }
