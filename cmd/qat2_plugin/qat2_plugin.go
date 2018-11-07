@@ -22,8 +22,11 @@ import (
 	"strings"
 
 	"github.com/Thomasdezeeuw/ini"
+
+	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 	utilsexec "k8s.io/utils/exec"
 
+	dpapi "github.com/intel/intel-device-plugins-for-kubernetes/internal/deviceplugin"
 	"github.com/intel/intel-device-plugins-for-kubernetes/pkg/debug"
 )
 
@@ -37,6 +40,44 @@ type section struct {
 	cryptoEngines      int
 	compressionEngines int
 	pinned             bool
+}
+
+func getDevTree(config map[string]section) dpapi.DeviceTree {
+	devTree := dpapi.NewDeviceTree()
+
+	for sname, svalue := range config {
+		var devType string
+
+		if svalue.pinned {
+			devType = fmt.Sprintf("pinned_cy%d_dc%d", svalue.cryptoEngines, svalue.compressionEngines)
+			for _, ep := range svalue.endpoints {
+				for i := 0; i < ep.processes; i++ {
+					devTree.AddDevice(devType, fmt.Sprintf("%s_%s_%d", sname, ep.id, i), dpapi.DeviceInfo{
+						State: pluginapi.Healthy,
+						Envs: map[string]string{
+							"QAT_SECTION_NAME": sname,
+						},
+					})
+				}
+			}
+		} else {
+			devType = fmt.Sprintf("distributed_cy%d_dc%d", svalue.cryptoEngines, svalue.compressionEngines)
+			for i := 0; i < svalue.endpoints[0].processes; i++ {
+				devTree.AddDevice(devType, fmt.Sprintf("%s_%d", sname, i), dpapi.DeviceInfo{
+					State: pluginapi.Healthy,
+					Envs: map[string]string{
+						"QAT_SECTION_NAME": sname,
+					},
+				})
+			}
+		}
+	}
+
+	return devTree
+}
+
+func parseConfigs() (map[string]section, error) {
+	return nil, nil
 }
 
 func main() {
@@ -157,5 +198,5 @@ func main() {
 		}
 
 	}
-	debug.Print(driverConfig)
+	debug.Print(getDevTree(driverConfig))
 }
