@@ -8,15 +8,15 @@ RUN dnf update -y && \
 RUN cd /usr/src/qat/quickassist/utilities/adf_ctl && \
     make KERNEL_SOURCE_DIR=/usr/src/qat/quickassist/qat && \
     cp -a adf_ctl /usr/bin/
-ARG DIR=/go/src/github.com/intel/intel-device-plugins-for-kubernetes
+ARG DIR=/root/go/src/github.com/intel/intel-device-plugins-for-kubernetes
 WORKDIR $DIR
 COPY . .
 RUN cd cmd/qat2_plugin; go install
-RUN chmod a+x /go/bin/qat2_plugin
+RUN chmod a+x /root/go/bin/qat2_plugin
 
 from fedora:28
 RUN dnf update -y && \
-    dnf install -y libstdc++  && \
-COPY --from=builder /go/bin/qat2_plugin /usr/bin/intel_qat2_device_plugin
+    dnf install -y libstdc++
+COPY --from=builder /root/go/bin/qat2_plugin /usr/bin/intel_qat2_device_plugin
 COPY --from=builder /usr/bin/adf_ctl /usr/bin/adf_ctl
 CMD ["/usr/bin/intel_qat2_device_plugin"]

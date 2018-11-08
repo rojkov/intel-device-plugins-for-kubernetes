@@ -16,9 +16,7 @@ spec:
       containers:
       - name: intel-qat2-plugin
         securityContext:
-          capabilities:
-            add:
-              [SYS_ADMIN]
+          privileged: true
         image: intel-qat2-plugin:devel
         imagePullPolicy: IfNotPresent
         volumeMounts:

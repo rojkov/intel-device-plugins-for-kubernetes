@@ -64,6 +64,7 @@ func getDevTree(config map[string]section) dpapi.DeviceTree {
 						Nodes: []string{
 							"/dev/qat_adf_ctl",
 							"/dev/qat_dev_processes",
+							"/dev/usdm_drv",
 						},
 						Envs: map[string]string{
 							"QAT_SECTION_NAME": sname,
@@ -79,6 +80,7 @@ func getDevTree(config map[string]section) dpapi.DeviceTree {
 					Nodes: []string{
 						"/dev/qat_adf_ctl",
 						"/dev/qat_dev_processes",
+						"/dev/usdm_drv",
 					},
 					Envs: map[string]string{
 						"QAT_SECTION_NAME": sname,
