@@ -61,6 +61,10 @@ func getDevTree(config map[string]section) dpapi.DeviceTree {
 				for i := 0; i < ep.processes; i++ {
 					devTree.AddDevice(devType, fmt.Sprintf("%s_%s_%d", sname, ep.id, i), dpapi.DeviceInfo{
 						State: pluginapi.Healthy,
+						Nodes: []string{
+							"/dev/qat_adf_ctl",
+							"/dev/qat_dev_processes",
+						},
 						Envs: map[string]string{
 							"QAT_SECTION_NAME": sname,
 						},
@@ -72,6 +76,10 @@ func getDevTree(config map[string]section) dpapi.DeviceTree {
 			for i := 0; i < svalue.endpoints[0].processes; i++ {
 				devTree.AddDevice(devType, fmt.Sprintf("%s_%d", sname, i), dpapi.DeviceInfo{
 					State: pluginapi.Healthy,
+					Nodes: []string{
+						"/dev/qat_adf_ctl",
+						"/dev/qat_dev_processes",
+					},
 					Envs: map[string]string{
 						"QAT_SECTION_NAME": sname,
 					},
