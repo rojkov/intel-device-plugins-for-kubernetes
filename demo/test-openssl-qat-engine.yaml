@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: intelqat-demo-job
+  labels:
+    jobgroup: intelqat-demo
+spec:
+  template:
+    metadata:
+      labels:
+        jobgroup: intelqat-demo
+    spec:
+      restartPolicy: Never
+      containers:
+        -
+          name: intelqat-demo-job-1
+          securityContext:
+            privileged: true
+          image: debian-qat:working
+          imagePullPolicy: IfNotPresent
+          command: [ "openssl", "speed", "-engine", "qat", "-elapsed", "-async_jobs", "72", "rsa2048" ]
+          resources:
+            limits:
+              qat.intel.com/distributed_cy1_dc0: 1
