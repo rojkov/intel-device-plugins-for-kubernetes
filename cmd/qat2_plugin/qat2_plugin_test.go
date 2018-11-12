@@ -37,20 +37,6 @@ func init() {
 }
 
 func TestParseConfigs(t *testing.T) {
-	fcmd := fakeexec.FakeCmd{
-		CombinedOutputScript: []fakeexec.FakeCombinedOutputAction{
-			func() ([]byte, error) {
-				return []byte(adfCtlOutput), nil
-			},
-		},
-	}
-	execer := fakeexec.FakeExec{
-		CommandScript: []fakeexec.FakeCommandAction{
-			func(cmd string, args ...string) exec.Cmd {
-				return fakeexec.InitFakeCmd(&fcmd, cmd, args...)
-			},
-		},
-	}
 	tcases := []struct {
 		name        string
 		testData    string
@@ -60,8 +46,27 @@ func TestParseConfigs(t *testing.T) {
 			name:     "All is goog",
 			testData: "all_is_good",
 		},
+		{
+			name:        "Missing section with LinitDevAccess=1",
+			testData:    "missing_pinned_section",
+			expectedErr: true,
+		},
 	}
 	for _, tc := range tcases {
+		fcmd := fakeexec.FakeCmd{
+			CombinedOutputScript: []fakeexec.FakeCombinedOutputAction{
+				func() ([]byte, error) {
+					return []byte(adfCtlOutput), nil
+				},
+			},
+		}
+		execer := fakeexec.FakeExec{
+			CommandScript: []fakeexec.FakeCommandAction{
+				func(cmd string, args ...string) exec.Cmd {
+					return fakeexec.InitFakeCmd(&fcmd, cmd, args...)
+				},
+			},
+		}
 		dp := &devicePlugin{
 			execer:    &execer,
 			configDir: "./test_data/" + tc.testData,
