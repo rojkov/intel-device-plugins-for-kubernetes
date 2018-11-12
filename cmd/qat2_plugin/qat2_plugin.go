@@ -112,6 +112,7 @@ func (dp *devicePlugin) parseConfigs() (map[string]section, error) {
 	}
 	output := string(outputBytes[:])
 
+	devNum := 0
 	driverConfig := make(map[string]section)
 	for ln, line := range strings.Split(output, "\n") {
 		if !strings.HasPrefix(line, " qat_") {
@@ -148,6 +149,7 @@ func (dp *devicePlugin) parseConfigs() (map[string]section, error) {
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
+		devNum++
 
 		debug.Print(ln, devID, line)
 
@@ -209,6 +211,13 @@ func (dp *devicePlugin) parseConfigs() (map[string]section, error) {
 			}
 		}
 
+	}
+
+	// check if the number of sections with LimitDevAccess=1 is equal to the number of endpoints
+	for sname, svalue := range driverConfig {
+		if svalue.pinned && len(svalue.endpoints) != devNum {
+			return nil, errors.Errorf("Section [%s] must be defined for all QAT devices since it contains LimitDevAccess=1", sname)
+		}
 	}
 
 	return driverConfig, nil
