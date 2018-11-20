@@ -17,8 +17,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -37,6 +39,10 @@ const (
 	namespace = "qat.intel.com"
 )
 
+var (
+	uioRegex = regexp.MustCompile(`^uio[0-9]+$`)
+)
+
 type endpoint struct {
 	id        string
 	processes int
@@ -52,40 +58,46 @@ type section struct {
 func getDevTree(config map[string]section) dpapi.DeviceTree {
 	devTree := dpapi.NewDeviceTree()
 
+	devFiles, err := ioutil.ReadDir("/dev")
+	if err != nil {
+		debug.Print("Can't read /dev. Do nothing.")
+		return devTree
+	}
+
+	devs := []string{
+		"/dev/qat_adf_ctl",
+		"/dev/qat_dev_processes",
+		"/dev/usdm_drv",
+	}
+	for _, devFile := range devFiles {
+		fname := devFile.Name()
+
+		if uioRegex.MatchString(fname) {
+			devs = append(devs, path.Join("/dev", fname))
+		}
+	}
+
 	for sname, svalue := range config {
 		var devType string
 
-		if svalue.pinned {
-			devType = fmt.Sprintf("pinned_cy%d_dc%d", svalue.cryptoEngines, svalue.compressionEngines)
-			for _, ep := range svalue.endpoints {
-				for i := 0; i < ep.processes; i++ {
-					devTree.AddDevice(devType, fmt.Sprintf("%s_%s_%d", sname, ep.id, i), dpapi.DeviceInfo{
-						State: pluginapi.Healthy,
-						Nodes: []string{
-							"/dev/qat_adf_ctl",
-							"/dev/qat_dev_processes",
-							"/dev/usdm_drv",
-						},
-						Envs: map[string]string{
-							"QAT_SECTION_NAME": sname,
-						},
-					})
-				}
-			}
-		} else {
-			devType = fmt.Sprintf("distributed_cy%d_dc%d", svalue.cryptoEngines, svalue.compressionEngines)
-			for i := 0; i < svalue.endpoints[0].processes; i++ {
-				devTree.AddDevice(devType, fmt.Sprintf("%s_%d", sname, i), dpapi.DeviceInfo{
+		devType = fmt.Sprintf("cy%d_dc%d", svalue.cryptoEngines, svalue.compressionEngines)
+		for k, ep := range svalue.endpoints {
+			for i := 0; i < ep.processes; i++ {
+				devTree.AddDevice(devType, fmt.Sprintf("%s_%s_%d", sname, ep.id, i), dpapi.DeviceInfo{
 					State: pluginapi.Healthy,
-					Nodes: []string{
-						"/dev/qat_adf_ctl",
-						"/dev/qat_dev_processes",
-						"/dev/usdm_drv",
-					},
+					Nodes: devs,
 					Envs: map[string]string{
+						fmt.Sprintf("QAT_SECTION_NAME_%s_%d", devType, i*(k+1)): sname,
+						// This env variable may get overriden if a container requests more than one QAT process.
+						// But we keep this code since the majority of pod workloads run only one QAT process.
+						// The rest should use QAT_SECTION_NAME_XXX variables.
 						"QAT_SECTION_NAME": sname,
 					},
 				})
+			}
+
+			if !svalue.pinned {
+				break
 			}
 		}
 	}
@@ -234,6 +246,13 @@ func (dp *devicePlugin) Scan(notifier dpapi.Notifier) error {
 
 		time.Sleep(5 * time.Second)
 	}
+}
+
+func (dp *devicePlugin) PostAllocate(response *pluginapi.AllocateResponse) error {
+	for _, containerResponse := range response.GetContainerResponses() {
+	}
+
+	return nil
 }
 
 func main() {
