@@ -248,13 +248,6 @@ func (dp *devicePlugin) Scan(notifier dpapi.Notifier) error {
 	}
 }
 
-func (dp *devicePlugin) PostAllocate(response *pluginapi.AllocateResponse) error {
-	for _, containerResponse := range response.GetContainerResponses() {
-	}
-
-	return nil
-}
-
 func main() {
 	debugEnabled := flag.Bool("debug", false, "enable debug output")
 	flag.Parse()
