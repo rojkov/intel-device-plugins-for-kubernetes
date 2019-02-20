@@ -1,6 +1,7 @@
 load("@bazel_gazelle//:def.bzl", "gazelle")
 
 # gazelle:prefix github.com/intel/intel-device-plugins-for-kubernetes
+# Disable special handling of gRPC for dependency resolution
 # gazelle:proto disable_global
 gazelle(
     name = "gazelle",
