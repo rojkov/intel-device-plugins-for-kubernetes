@@ -1,0 +1,49 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["gpu_plugin.go"],
+    importpath = "github.com/intel/intel-device-plugins-for-kubernetes/cmd/gpu_plugin",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//pkg/debug:go_default_library",
+        "//pkg/deviceplugin:go_default_library",
+        "//vendor/github.com/pkg/errors:go_default_library",
+        "//vendor/k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "gpu_plugin",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["gpu_plugin_test.go"],
+    embed = [":go_default_library"],
+    deps = ["//pkg/debug:go_default_library"],
+)
+
+load("@io_bazel_rules_docker//go:image.bzl", "go_image")
+
+go_image(
+    name = "go_image",
+    embed = [":go_default_library"],
+    goarch = "amd64",
+    goos = "linux",
+    pure = "on",
+)
+
+load(
+    "@io_bazel_rules_docker//container:container.bzl",
+    "container_bundle",
+)
+
+container_bundle(
+    name = "go_bundle",
+    images = {
+        "intel-gpu-bar:bazz": "//cmd/gpu_plugin:go_image",
+    },
+)
