@@ -1,4 +1,7 @@
 load("@bazel_gazelle//:def.bzl", "gazelle")
 
 # gazelle:prefix github.com/intel/intel-device-plugins-for-kubernetes
-gazelle(name = "gazelle")
+gazelle(
+    name = "gazelle",
+    external = "vendored",
+)
