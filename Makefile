@@ -55,5 +55,13 @@ $(demos):
 
 demos: $(demos)
 
+bazel-build:
+	@bazel build -- //... -//vendor/...
 
-.PHONY: all format vet cyclomatic-check test lint build images $(cmds) $(images)
+bazel-test:
+	@bazel test --features=race -- //... -//vendor/...
+
+bazel-update:
+	@bazel run //:gazelle
+
+.PHONY: all format vet cyclomatic-check test lint build images $(cmds) $(images) bazel-build bazel-test bzel-update
