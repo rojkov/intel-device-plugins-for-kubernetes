@@ -180,7 +180,7 @@ func (dp *devicePlugin) parseConfigs() (map[string]section, error) {
 		debug.Print(ln, devID, line)
 
 		for sectionName, data := range config {
-			if sectionName == "GENERAL" || sectionName == "KERNEL" || sectionName == "" {
+			if sectionName == "GENERAL" || sectionName == "KERNEL" || sectionName == "KERNEL_QAT" || sectionName == "" {
 				continue
 			}
 			debug.Print(sectionName)
