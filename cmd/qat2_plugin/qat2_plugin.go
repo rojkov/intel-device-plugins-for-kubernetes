@@ -149,12 +149,12 @@ func (dp *devicePlugin) parseConfigs() (map[string]section, error) {
 		devType := ""
 		for _, propstr := range devprops {
 			switch strings.TrimSpace(propstr) {
-				// Embeded in Chipset c62x.
-				case "type: c6xx":
-					devType = "c6xx"
-				// Cards with communication chipset 8925-8955.
-				case "type: dh895xcc":
-					devType = "dh895xcc"
+			// Embeded in Chipset c62x.
+			case "type: c6xx":
+				devType = "c6xx"
+			// Cards with communication chipset 8925-8955.
+			case "type: dh895xcc":
+				devType = "dh895xcc"
 			}
 		}
 
