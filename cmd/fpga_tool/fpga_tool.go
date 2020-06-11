@@ -143,7 +143,7 @@ func installBitstream(fname string, dryRun, force, quiet bool) (err error) {
 	}
 	defer dst.Close()
 	_, err = io.Copy(dst, src)
-	return
+	return err
 }
 
 func printBitstreamInfo(fname string, quiet bool) (err error) {
@@ -248,20 +248,20 @@ func printFpgaPort(f fpga.Port, quiet bool) (err error) {
 	fmt.Printf("Interface UUID                   : %s\n", f.GetInterfaceUUID())
 	fmt.Printf("Accelerator UUID                 : %s\n", f.GetAcceleratorTypeUUID())
 	if !quiet {
-		if apiVer, err := f.GetAPIVersion(); err == nil {
+		if apiVer, err2 := f.GetAPIVersion(); err2 == nil {
 			fmt.Printf("Kernet API Version               : %d\n", apiVer)
-			pi, err := f.PortGetInfo()
-			if err == nil {
+			pi, err2 := f.PortGetInfo()
+			if err2 == nil {
 				fmt.Printf("Port Regions                     : %d\n", pi.Regions)
 				for idx := 0; uint32(idx) < pi.Regions; idx++ {
-					if ri, err := f.PortGetRegionInfo(uint32(idx)); err == nil {
+					if ri, err3 := f.PortGetRegionInfo(uint32(idx)); err3 == nil {
 						fmt.Printf("Port Region (Index/Size/Offset)  : %d / %d / %d\n", ri.Index, ri.Size, ri.Offset)
 					}
 				}
 			}
 		}
 	}
-	return
+	return err
 }
 
 func printPCIeInfo(pci *fpga.PCIDevice, quiet bool) {
